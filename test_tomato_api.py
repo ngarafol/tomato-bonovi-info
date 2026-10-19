@@ -39,6 +39,31 @@ class TestSdui(unittest.TestCase):
         self.assertEqual(tomato.tokens_from(response)["refresh"], "r")
         self.assertIsNone(tomato.tokens_from({"state": "invalidCode"}))
 
+    def test_parse_balance_ignores_other_amounts(self):
+        self.assertEqual(tomato.parse_balance(self.dashboard)["amount"], 7.42)
+        self.assertEqual(tomato.parse_balance(self.dashboard)["currency"], "EUR")
+        self.assertIsNone(tomato.parse_balance({"content": [{"amount": "120"}]}))
+
+    def test_parse_balance_accepts_comma_decimals(self):
+        self.assertEqual(tomato.parse_balance({"price": {"amount": "7,42", "currency": "EUR"}})["amount"], 7.42)
+
+
+class TestWatch(unittest.TestCase):
+    def test_notify_only_on_transition(self):
+        self.assertEqual(tomato.should_notify(1.0, 3.0, False), (True, True))
+        self.assertEqual(tomato.should_notify(1.0, 3.0, True), (False, True))
+        self.assertEqual(tomato.should_notify(5.0, 3.0, True), (False, False))
+
+    def test_notify_uses_osascript_on_macos(self):
+        import contextlib, io, sys
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            tomato.notify('Tomato "test"', "1.00 EUR", dry_run=True)
+        if sys.platform == "darwin":
+            self.assertIn("osascript", out.getvalue())
+        self.assertNotIn('"test"', out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

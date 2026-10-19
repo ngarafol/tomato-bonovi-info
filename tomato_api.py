@@ -21,7 +21,10 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -110,6 +113,50 @@ def collect(node, keys: set[str], out: list[str], prefix: str = "") -> None:
     elif isinstance(node, list):
         for i, item in enumerate(node):
             collect(item, keys, out, f"{prefix}[{i}]")
+
+
+def walk_dicts(node):
+    if isinstance(node, dict):
+        yield node
+        for value in node.values():
+            yield from walk_dicts(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk_dicts(item)
+
+
+def parse_balance(dashboard: dict) -> dict | None:
+    """Prvi SDUI cvor koji ima i `amount` i `currency` = stanje racuna."""
+    for node in walk_dicts(dashboard):
+        if "amount" in node and "currency" in node:
+            try:
+                amount = float(str(node["amount"]).replace(",", "."))
+            except (TypeError, ValueError):
+                continue
+            return {"amount": amount, "currency": node["currency"]}
+    return None
+
+
+def should_notify(amount: float, threshold: float, already_alerted: bool) -> tuple[bool, bool]:
+    """(posalji obavijest, novo stanje alarma) -- alarm se resetira kad stanje naraste."""
+    below = amount < threshold
+    return below and not already_alerted, below
+
+
+def notify(title: str, message: str, dry_run: bool = False) -> None:
+    title, message = title.replace('"', "'"), message.replace('"', "'")
+    command = None
+    if sys.platform == "darwin":
+        command = ["osascript", "-e", f'display notification "{message}" with title "{title}"']
+    elif shutil.which("notify-send"):
+        command = ["notify-send", title, message]
+    if command is None:
+        print(f"[obavijest] {title}: {message}")
+        return
+    if dry_run:
+        print("[dry-run] " + " ".join(command))
+        return
+    subprocess.run(command, check=False)
 
 
 # --- state / tokeni -------------------------------------------------------
@@ -215,6 +262,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     if args.json:
         print(json.dumps(dashboard, ensure_ascii=False, indent=2))
         return
+    balance = parse_balance(dashboard)
+    if balance:
+        print(f"Stanje: {balance['amount']:.2f} {balance['currency']}")
     lines: list[str] = []
     collect(
         dashboard,
@@ -228,6 +278,32 @@ def cmd_status(args: argparse.Namespace) -> None:
         print("Odgovor nema prepoznatih polja; pokreni s --json za sirovi SDUI.")
     else:
         print("\n".join(dict.fromkeys(lines)))
+
+
+def cmd_watch(args: argparse.Namespace) -> None:
+    while True:
+        dashboard = with_token("GET", "dashboard")
+        balance = parse_balance(dashboard)
+        if balance is None:
+            sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json i javi mi strukturu.")
+
+        state = load_state()
+        send, below = should_notify(balance["amount"], args.below, state.get("alerted", False))
+        state["alerted"] = below
+        state["lastBalance"] = balance
+        save_state(state)
+        stamp = time.strftime("%Y-%m-%d %H:%M")
+        print(f"{stamp}  {balance['amount']:.2f} {balance['currency']}  (prag {args.below:g})")
+
+        if send:
+            notify(
+                "Tomato: nisko stanje",
+                f"{balance['amount']:.2f} {balance['currency']} (prag {args.below:g})",
+                dry_run=args.dry_run,
+            )
+        if not args.every:
+            return
+        time.sleep(args.every)
 
 
 def cmd_redeem(args: argparse.Namespace) -> None:
@@ -257,6 +333,12 @@ def main() -> None:
     status = sub.add_parser("status", help="stanje racuna i preostalih jedinica")
     status.add_argument("--json", action="store_true", help="sirovi SDUI odgovor")
     status.set_defaults(func=cmd_status)
+
+    watch = sub.add_parser("watch", help="obavijest kad stanje padne pod prag")
+    watch.add_argument("--below", type=float, required=True, help="prag u EUR")
+    watch.add_argument("--every", type=int, help="sekunde izmedu provjera (default: samo jednom)")
+    watch.add_argument("--dry-run", action="store_true", help="prikazi naredbu umjesto obavijesti")
+    watch.set_defaults(func=cmd_watch)
 
     redeem = sub.add_parser("redeem", help="nadoplati racun kodom bona")
     redeem.add_argument("--code", required=True, help="14-znamenkasti kod s bona")

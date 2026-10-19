@@ -92,6 +92,18 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
   (`content[0].price.amount = …`). Ako se shema promijeni, `--json` pokaže sirovi
   odgovor.
 - Provjere: `python3 -m unittest test_tomato_api`.
+- TAN možeš upisati interaktivno ili ga proslijediti kroz stdin, što je praktično
+  kad ti ga netko izdiktira preko telefona:
+  `printf '123456\n' | ./tomato_api.py login --msisdn 0921234567`.
+- `watch` javlja **samo na prijelazu** ispod praga (alarm se resetira kad stanje
+  naraste), pa nema spama:
+  ```sh
+  ./tomato_api.py watch --below 3            # jedna provjera (za cron)
+  ./tomato_api.py watch --below 3 --every 3600
+  ```
+  Obavijest ide preko macOS `osascript` (ili `notify-send` na Linuxu); `--dry-run`
+  samo ispiše naredbu. Cron primjer: `0 9 * * * cd /putanja && ./tomato_api.py watch --below 3`
+  (uz `TOMATO_STATE` u okolini ako state nije na defaultnoj putanji).
 
 ### Zašto u aplikaciji nikad ne vidiš TAN
 
