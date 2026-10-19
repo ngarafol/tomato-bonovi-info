@@ -93,6 +93,31 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
   odgovor.
 - Provjere: `python3 -m unittest test_tomato_api`.
 
+### Zašto u aplikaciji nikad ne vidiš TAN
+
+Aplikacija koristi **Google SMS Retriever API** (`SmsRetriever.startSmsRetriever()`
++ `GoogleSmsReceiver` u `ui/otp/sms/`): TAN stigne kao **običan SMS**, a app ga
+sama upiše — `OtpViewModel.k0(smsText)` vadi `\b\d{6}\b` i popuni polje. Dakle
+ništa se ne presreće na mreži i ništa ne treba tipkati; zato "nikad nisi vidio
+kod". WiFi pritom ne smeta — mobilna mreža treba **samo** za carrier auto-login
+(`oauth2/authz_autologin`, MSISDN se određuje po mreži s koje zahtjev dolazi).
+
+Kad `tomato_api.py login` pošalje zahtjev, app na mobitelu **ne** sluša, pa SMS
+samo sleti na telefon: osoba koja ga ima pročita 6 znamenki i javi ih tebi
+(`--tan 123456`), ili ih upišeš na prompt. Ako TAN SMS nije u inboxu (flash /
+class-0 poruka se ne pohranjuje), mora se pročitati u trenutku dok skripta čeka.
+
+### Alternativa bez TAN-a (traži root)
+
+Ako je mobitel rootan, refresh token se može izvaditi iz
+`/data/data/co.infinum.mojtomato/shared_prefs/MOJ_VIP_PREFERENCES_SECURE.xml`:
+ključevi su `SHA1("<ime>_<0..3>")` (vrijednost razrezana na 4 dijela), a vrijednost
+je `hex(XOR(UTF-8 vrijednost, ključ))` gdje je ključ **ime paketa**
+`co.infinum.mojtomato` (vidi `SecurePreferencesManager`/`CryptoUtils`). Ime je
+`KEY_PRIMARY_REFRESH_TOKEN`. Tada u `~/.config/tomato/state.json` upišeš
+`{"refresh": "...", "isLoginMfa": false, "msisdn": "385..."}` i `status`/`redeem`
+rade bez TAN-a.
+
 ## Izvori
 
 - https://www.tomato.com.hr/cesta-pitanja/racun-na-bonove
