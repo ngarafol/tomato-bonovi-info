@@ -107,6 +107,13 @@ samo sleti na telefon: osoba koja ga ima pročita 6 znamenki i javi ih tebi
 (`--tan 123456`), ili ih upišeš na prompt. Ako TAN SMS nije u inboxu (flash /
 class-0 poruka se ne pohranjuje), mora se pročitati u trenutku dok skripta čeka.
 
+TAN ide **isključivo na broj naveden u zahtjevu** (server ga šalje na taj MSISDN,
+a tokeni se vežu na taj isti broj): nema načina da ga pošalješ na drugi broj, a
+lažiranje izvornog MSISDN-a (mreža/header) je upravo sigurnosna provjera koju
+carrier prijava traži. Ako si vlasnik broja, a SIM je kod nekoga drugog, legalan
+put je zamjena/duplikat SIM-a ili eSIM uz provjeru identiteta kod operatera
+(0800 092 092) — ne zaobilaženje OTP-a.
+
 ### Alternativa bez TAN-a (traži root)
 
 Ako je mobitel rootan, refresh token se može izvaditi iz
