@@ -53,6 +53,26 @@ gateway, potpisan `hash`-em) — kartica se upisuje u pregledniku. Broj u
 - Prijava ide "preko Tomato mobilne mreže" (bez koda), uz 2FA, korisničkim imenom/lozinkom ili biometrijom.
 - Promet kroz app preko Tomato mreže se ne naplaćuje.
 
+Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
+
+- API base je **hardkodiran**: `https://webauth.tomato.com.hr/mcrmtomato_oauth/api/`
+  (`BaseUrl.OAUTH`), svaki zahtjev dobiva `?apiVersion=v4.6`.
+- Stanje računa/jedinica: `GET dashboard` (SDUI: `AccountInfoCardResponse.price`,
+  `UnitsStatusResponse.units[]`, `ConsumptionCardResponse`).
+- Nadoplata bonom: `POST shop/topUpRenewal` s `{token, phoneNumber, inputMethod}`.
+- Prijava: `token/msisdnLogin` → SMS TAN (`token/msisdnTanLogin`), ili
+  `token/mfaLogin` (korisnik/lozinka) → TAN, ili carrier auto-login
+  (`oauth2/authz_autologin`, MSISDN se određuje po mreži s koje zahtjev dolazi).
+- **`token/refresh` traži samo `refreshToken`** (nema SIM-a, nema SMS-a), a
+  `token/biometric` dokazuje isto. Nema certificate pinninga, nema root/tamper
+  detekcije, tokeni u SharedPreferences su samo XOR-obfuscirani imenom paketa.
+- **Zaključak:** headless (server-side) stanje i nadoplata su izvedivi *nakon
+  jednog interaktivnog bootstrapa* — prvi TAN dolazi SMS-om na mobitel s karticom,
+  pa ga ta osoba mora jednom proslijediti. Carrier login s udaljenog servera ne
+  prolazi jer MSISDN čita mreža.
+- Automatizacija API-ja gotovo sigurno krši uvjete korištenja — koristiti samo na
+  vlastitom/obiteljskom broju i svjesno.
+
 ## Izvori
 
 - https://www.tomato.com.hr/cesta-pitanja/racun-na-bonove
