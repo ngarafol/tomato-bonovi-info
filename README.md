@@ -73,6 +73,26 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
 - Automatizacija API-ja gotovo sigurno krši uvjete korištenja — koristiti samo na
   vlastitom/obiteljskom broju i svjesno.
 
+### tomato_api.py
+
+```sh
+./tomato_api.py login --msisdn 0921234567   # pošalje SMS TAN; ti (ili osoba s mobitelom) upišeš kod
+./tomato_api.py status                      # stanje računa + preostale jedinice
+./tomato_api.py status --json               # sirovi SDUI odgovor
+./tomato_api.py redeem --code 12345678901234
+```
+
+- `login` traži **jednokratnu** pomoć: TAN dolazi SMS-om na mobitel s Tomato
+  karticom. Nakon toga tokeni (`~/.config/tomato/state.json`, 0600) drže sesiju,
+  a `token/refresh` radi s bilo koje mreže.
+- Ako `login --msisdn` vrati `invalidCredentials` ("Ovaj broj nije povezan s
+  nijednim računom") — broj nema Moj Tomato račun; tada ili registracija, ili
+  `login --username <ime> --password` ako račun postoji.
+- `status` ne parsira SDUI shemu kruto: izvlači poznata polja s punom putanjom
+  (`content[0].price.amount = …`). Ako se shema promijeni, `--json` pokaže sirovi
+  odgovor.
+- Provjere: `python3 -m unittest test_tomato_api`.
+
 ## Izvori
 
 - https://www.tomato.com.hr/cesta-pitanja/racun-na-bonove
