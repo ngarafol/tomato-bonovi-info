@@ -2,6 +2,18 @@
 
 Provjera stanja Tomato **bonova** (prepaid) bez mobilne aplikacije.
 
+## Instalacija
+
+### Home Assistant (Marketplace / HACS)
+
+1. HACS -> tri tocke -> *Custom repositories* -> `https://github.com/ngarafol/tomato-bonovi-info`, kategorija **Integration**.
+2. Preuzmi **Tomato** i restartaj Home Assistant.
+3. *Postavke -> Uredaji i usluge -> Dodaj integraciju -> Tomato*, upisi broj; na mobitel s karticom dolazi SMS s TAN-om.
+4. Senzor `sensor.tomato_<broj>` (EUR, `monetary`) s atributima `units` i `msisdn`; osvjezava se svakih 30 min.
+5. Akcija `tomato.redeem` (`code` = kod bona) nadoplacuje racun.
+
+Integracija zivi u `custom_components/tomato/`; skripte (`tomato_api.py`, `topup.py`) su neovisne i ostaju za CLI/cron.
+
 ## Zašto
 
 - Moj Tomato **web portal je ugašen** ("Moj Tomato portal više nije dostupan!", https://moj.tomato.com.hr/).

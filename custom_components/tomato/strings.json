@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tomato account",
+        "description": "Enter the Tomato phone number. A 6-digit TAN is sent by SMS to the phone holding the SIM.",
+        "data": {
+          "msisdn": "Phone number"
+        }
+      },
+      "tan": {
+        "title": "Confirm TAN",
+        "description": "Enter the 6 digits from the SMS.",
+        "data": {
+          "tan": "TAN"
+        }
+      }
+    },
+    "error": {
+      "no_account": "This number is not linked to a Moj Tomato account.",
+      "invalid_tan": "The TAN is invalid or expired.",
+      "cannot_connect": "The Tomato API is not reachable."
+    },
+    "abort": {
+      "already_configured": "This number is already configured."
+    }
+  },
+  "services": {
+    "redeem": {
+      "name": "Redeem voucher",
+      "description": "Top up the account with a Tomato voucher code.",
+      "fields": {
+        "code": {
+          "name": "Voucher code",
+          "description": "14-digit code from the voucher.",
+          "example": "12345678901234"
+        },
+        "msisdn": {
+          "name": "Phone number",
+          "description": "Number to top up (only needed with more than one account)."
+        }
+      }
+    }
+  }
+}

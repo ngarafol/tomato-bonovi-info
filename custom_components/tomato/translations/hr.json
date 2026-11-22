@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tomato racun",
+        "description": "Unesi Tomato broj. Na mobitel s karticom dolazi SMS s 6-znamenkastim TAN-om.",
+        "data": {
+          "msisdn": "Broj mobitela"
+        }
+      },
+      "tan": {
+        "title": "Potvrdi TAN",
+        "description": "Unesi 6 znamenki iz SMS-a.",
+        "data": {
+          "tan": "TAN"
+        }
+      }
+    },
+    "error": {
+      "no_account": "Broj nije povezan s Moj Tomato racunom.",
+      "invalid_tan": "TAN nije ispravan ili je istekao.",
+      "cannot_connect": "Tomato API nije dostupan."
+    },
+    "abort": {
+      "already_configured": "Taj je broj vec dodan."
+    }
+  },
+  "services": {
+    "redeem": {
+      "name": "Nadoplati bonom",
+      "description": "Nadoplati racun kodom Tomato bona.",
+      "fields": {
+        "code": {
+          "name": "Kod bona",
+          "description": "14-znamenkasti kod s bona.",
+          "example": "12345678901234"
+        },
+        "msisdn": {
+          "name": "Broj",
+          "description": "Broj koji se nadoplacuje (potrebno samo ako imas vise racuna)."
+        }
+      }
+    }
+  }
+}
