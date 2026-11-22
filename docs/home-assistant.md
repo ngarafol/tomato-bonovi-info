@@ -10,12 +10,15 @@ radi s 3.8+). Za HA OS / Supervised:
 
 ```sh
 mkdir -p /config/tomato
-cp tomato_api.py /config/tomato/
+curl -fsSL https://raw.githubusercontent.com/ngarafol/tomato-bonovi-info/main/tomato_api.py \
+  -o /config/tomato/tomato_api.py
 chmod +x /config/tomato/tomato_api.py
 
 # login napravi bilo gdje (npr. na laptopu), pa prekopiraj state file:
 scp ~/.config/tomato/state.json root@homeassistant:/config/tomato/state.json
 ```
+
+Ažuriranje skripte kasnije je isti `curl` (ili `scp` lokalne kopije).
 
 Provjeri da radi iz HA konteksta:
 
