@@ -1,0 +1,18 @@
+redeem:
+  name: Nadoplati bonom
+  description: Nadoplati racun kodom Tomato bona.
+  fields:
+    code:
+      name: Kod bona
+      description: 14-znamenkasti kod s bona.
+      required: true
+      example: "12345678901234"
+      selector:
+        text:
+    msisdn:
+      name: Broj
+      description: Broj koji se nadoplacuje (potrebno samo ako imas vise racuna).
+      required: false
+      example: "385921234567"
+      selector:
+        text:

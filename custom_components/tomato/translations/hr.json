@@ -24,22 +24,5 @@
     "abort": {
       "already_configured": "Taj je broj vec dodan."
     }
-  },
-  "services": {
-    "redeem": {
-      "name": "Nadoplati bonom",
-      "description": "Nadoplati racun kodom Tomato bona.",
-      "fields": {
-        "code": {
-          "name": "Kod bona",
-          "description": "14-znamenkasti kod s bona.",
-          "example": "12345678901234"
-        },
-        "msisdn": {
-          "name": "Broj",
-          "description": "Broj koji se nadoplacuje (potrebno samo ako imas vise racuna)."
-        }
-      }
-    }
   }
 }
