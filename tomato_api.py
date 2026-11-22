@@ -96,15 +96,33 @@ def find_first(node, key: str):
     return next((d[key] for d in walk_dicts(node) if key in d), None)
 
 
+def _parse_amount(value) -> float | None:
+    """Broj iz broja, dicta ({"value": ...}) ili stringa ("2,50 EUR")."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        for key in ("value", "amount", "formatted"):
+            if key in value:
+                return _parse_amount(value[key])
+        return None
+    if isinstance(value, str):
+        match = re.search(r"-?\d+(?:[.,]\d+)?", value.replace(" ", ""))
+        if match:
+            return float(match.group(0).replace(",", "."))
+    return None
+
+
 def parse_balance(dashboard: dict) -> dict | None:
-    """Prvi SDUI cvor koji ima i `amount` i `currency` = stanje racuna."""
+    """Prvi SDUI cvor s `currency` i iznosom = stanje racuna."""
     for node in walk_dicts(dashboard):
-        if "amount" in node and "currency" in node:
-            try:
-                amount = float(str(node["amount"]).replace(",", "."))
-            except (TypeError, ValueError):
-                continue
-            return {"amount": amount, "currency": node["currency"]}
+        currency = node.get("currency")
+        if not currency:
+            continue
+        for key in ("amount", "price", "balance", "value"):
+            if key in node:
+                amount = _parse_amount(node[key])
+                if amount is not None:
+                    return {"amount": amount, "currency": currency}
     return None
 
 

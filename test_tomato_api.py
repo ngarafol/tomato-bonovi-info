@@ -41,6 +41,14 @@ class TestSdui(unittest.TestCase):
     def test_parse_balance_accepts_comma_decimals(self):
         self.assertEqual(tomato.parse_balance({"price": {"amount": "7,42", "currency": "EUR"}})["amount"], 7.42)
 
+    def test_parse_balance_nested_and_string_amounts(self):
+        self.assertEqual(
+            tomato.parse_balance({"account": {"balance": {"value": "7,42"}, "currency": "EUR"}})["amount"], 7.42
+        )
+        self.assertEqual(
+            tomato.parse_balance({"amount": "2,50 EUR", "currency": "EUR"})["amount"], 2.5
+        )
+
 
 class TestNotify(unittest.TestCase):
     def test_dry_run_escapes_quotes(self):

@@ -31,6 +31,7 @@ class TomatoBalanceSensor(CoordinatorEntity[TomatoCoordinator], SensorEntity):
     _attr_native_unit_of_measurement = "EUR"
     _attr_state_class = SensorStateClass.TOTAL
     _attr_has_entity_name = True
+    _attr_name = "Stanje"
     _attr_icon = "mdi:wallet"
 
     def __init__(self, coordinator: TomatoCoordinator, entry: ConfigEntry) -> None:
