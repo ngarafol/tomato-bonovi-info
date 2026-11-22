@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from datetime import date
 from typing import Any
@@ -58,9 +59,7 @@ def _parse_amount(value: Any) -> float | None:
                 return _parse_amount(value[key])
         return None
     if isinstance(value, str):
-        match = re.search(r"-?\d+(?:[.,]\d+)?", value.replace(" ", ""))
-        if match:
-            return float(match.group(0).replace(",", "."))
+        return _to_number(value)
     return None
 
 
@@ -131,8 +130,6 @@ class TomatoApi:
         except ClientError as err:
             raise TomatoApiError(str(err)) from err
         try:
-            import json
-
             return json.loads(body) if body.strip() else {}
         except ValueError as err:
             raise TomatoApiError(f"nije JSON: {body[:200]}") from err
@@ -193,14 +190,11 @@ class TomatoApi:
             await self._refresh_shared(used)
             return await self._request(method, path, payload, token=self.access)
 
-    async def _get(self, path: str) -> Any:
-        return await self._authed("GET", path)
-
     async def async_dashboard(self) -> dict[str, Any]:
         """Ljuska + sadrzaj odabranog taba (stanje je u tabu, ne u ljusci)."""
-        shell = await self._get("dashboard")
+        shell = await self._authed("GET", "dashboard")
         url = tab_url(shell)
-        return {"shell": shell, "tab": await self._get(url) if url else shell}
+        return {"shell": shell, "tab": await self._authed("GET", url) if url else shell}
 
     async def async_top_up(self, code: str) -> Any:
         return await self._authed(

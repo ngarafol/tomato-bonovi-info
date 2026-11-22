@@ -1,5 +1,9 @@
 # Home Assistant integracija
 
+> Ako samo zelis senzor u HA, instaliraj **integraciju** preko Marketplacea/HACS-a
+> (upute u [README](../README.md)). Ovo ispod je alternativa za setup bez
+> integracije: `command_line` senzor koji zove CLI skriptu.
+
 Cilj: `sensor.tomato_stanje` u HA + automacija koja javi kad stanje padne pod prag.
 Skripta ostaje jedini "integrator" — nema custom komponente.
 

@@ -406,13 +406,6 @@ def parse_dashboard(payload) -> dict:
 
 
 
-def to_date(text) -> "date | None":
-    """'04.12.2026' -> date(2026, 12, 4); neispravno -> None."""
-    try:
-        day, month, year = str(text).split(".")
-        return date(int(year), int(month), int(day))
-    except (AttributeError, TypeError, ValueError):
-        return None
 
 
 if __name__ == "__main__":

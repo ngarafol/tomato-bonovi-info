@@ -61,9 +61,17 @@ class TestTokenRefresh(unittest.IsolatedAsyncioTestCase):
             await base_refresh()
 
         api.async_refresh = counting_refresh
-        results = await asyncio.gather(api._get("dashboard"), api._get("dashboard"))
+        results = await asyncio.gather(api._authed("GET", "dashboard"), api._authed("GET", "dashboard"))
         self.assertEqual(refresh_calls, 1)
         self.assertTrue(all(result["ok"] for result in results))
+
+
+    def test_to_date(self):
+        from datetime import date
+
+        self.assertEqual(API.to_date("04.12.2026"), date(2026, 12, 4))
+        self.assertIsNone(API.to_date(None))
+        self.assertIsNone(API.to_date("nema datuma"))
 
     async def test_top_up_retries_after_401(self):
         api = self.make_api()
