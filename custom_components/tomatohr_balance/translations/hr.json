@@ -14,6 +14,18 @@
         "data": {
           "tan": "TAN"
         }
+      },
+      "reauth_confirm": {
+        "title": "Ponovna prijava Tomato",
+        "description": "Sesija je istekla. Potvrdi da ti se posalje novi TAN SMS-om.",
+        "data": {}
+      },
+      "reauth_tan": {
+        "title": "Potvrdi TAN",
+        "description": "Unesi 6 znamenki iz SMS-a.",
+        "data": {
+          "tan": "TAN"
+        }
       }
     },
     "error": {
@@ -22,7 +34,8 @@
       "cannot_connect": "Tomato API nije dostupan."
     },
     "abort": {
-      "already_configured": "Taj je broj vec dodan."
+      "already_configured": "Taj je broj vec dodan.",
+      "reauth_successful": "Ponovna prijava je uspjela."
     }
   }
 }

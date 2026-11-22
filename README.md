@@ -2,6 +2,9 @@
 
 Provjera stanja Tomato **bonova** (prepaid) bez mobilne aplikacije.
 
+[![tests](https://github.com/ngarafol/tomato-bonovi-info/actions/workflows/tests.yml/badge.svg)](https://github.com/ngarafol/tomato-bonovi-info/actions/workflows/tests.yml)
+[![validate](https://github.com/ngarafol/tomato-bonovi-info/actions/workflows/validate.yml/badge.svg)](https://github.com/ngarafol/tomato-bonovi-info/actions/workflows/validate.yml)
+
 ## Instalacija
 
 ### Home Assistant (Marketplace / HACS)

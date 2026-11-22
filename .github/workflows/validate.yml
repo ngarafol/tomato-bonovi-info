@@ -6,6 +6,7 @@ on:
   pull_request:
   schedule:
     - cron: "0 4 * * 1"
+  workflow_dispatch:
 
 jobs:
   hacs:
@@ -21,3 +22,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
+
+  status:
+    needs: [hacs, hassfest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rezultat validacije
+        run: |
+          {
+            echo "### Validacija integracije"
+            echo ""
+            echo "| provjera | rezultat |"
+            echo "|---|---|"
+            echo "| HACS | ${{ needs.hacs.result }} |"
+            echo "| hassfest | ${{ needs.hassfest.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

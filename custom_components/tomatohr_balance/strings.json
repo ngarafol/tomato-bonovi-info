@@ -14,6 +14,18 @@
         "data": {
           "tan": "TAN"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Tomato",
+        "description": "The session expired. Confirm to receive a new TAN by SMS.",
+        "data": {}
+      },
+      "reauth_tan": {
+        "title": "Confirm TAN",
+        "description": "Enter the 6 digits from the SMS.",
+        "data": {
+          "tan": "TAN"
+        }
       }
     },
     "error": {
@@ -22,7 +34,8 @@
       "cannot_connect": "The Tomato API is not reachable."
     },
     "abort": {
-      "already_configured": "This number is already configured."
+      "already_configured": "This number is already configured.",
+      "reauth_successful": "Reauthentication was successful."
     }
   }
 }
