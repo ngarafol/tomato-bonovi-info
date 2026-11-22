@@ -280,6 +280,14 @@ def cmd_status(args: argparse.Namespace) -> None:
         print("\n".join(dict.fromkeys(lines)))
 
 
+def cmd_balance(_: argparse.Namespace) -> None:
+    """Strojno citljiv izlaz za Home Assistant / skripte."""
+    balance = parse_balance(with_token("GET", "dashboard"))
+    if balance is None:
+        sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json.")
+    print(json.dumps(balance, ensure_ascii=False))
+
+
 def cmd_watch(args: argparse.Namespace) -> None:
     while True:
         dashboard = with_token("GET", "dashboard")
@@ -333,6 +341,8 @@ def main() -> None:
     status = sub.add_parser("status", help="stanje racuna i preostalih jedinica")
     status.add_argument("--json", action="store_true", help="sirovi SDUI odgovor")
     status.set_defaults(func=cmd_status)
+
+    sub.add_parser("balance", help="stanje kao JSON (za Home Assistant)").set_defaults(func=cmd_balance)
 
     watch = sub.add_parser("watch", help="obavijest kad stanje padne pod prag")
     watch.add_argument("--below", type=float, required=True, help="prag u EUR")

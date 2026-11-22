@@ -104,6 +104,8 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
   Obavijest ide preko macOS `osascript` (ili `notify-send` na Linuxu); `--dry-run`
   samo ispiše naredbu. Cron primjer: `0 9 * * * cd /putanja && ./tomato_api.py watch --below 3`
   (uz `TOMATO_STATE` u okolini ako state nije na defaultnoj putanji).
+- `./tomato_api.py balance` ispiše `{"amount": 2.5, "currency": "EUR"}` — za Home
+  Assistant i skripte. HA upute (senzor + automacija): [docs/home-assistant.md](docs/home-assistant.md).
 
 ### Zašto u aplikaciji nikad ne vidiš TAN
 
