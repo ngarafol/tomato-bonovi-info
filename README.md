@@ -88,6 +88,7 @@ vlastitom/obiteljskom broju i svjesno.
 ### Nadoplata iz Home Assistant-a
 
 Akcija `tomatohr_balance.redeem` (`code` = 14-znamenkasti kod s bona, `msisdn` samo ako imas vise racuna).
+U API-ju se to polje zove `token`, ali to je **kod bona**, ne sesijski token — sesiju drzi integracija.
 
 - *Alati za razvijatelje -> Akcije -> `tomatohr_balance.redeem`*
 - ili u skripti/automatizaciji:
