@@ -199,3 +199,53 @@ class TomatoApi:
             },
             token=self.access,
         )
+
+
+DATE_RE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}")
+
+
+def _to_number(text: Any) -> float | None:
+    """'10,82' / '1.234,56' / '7956' -> broj."""
+    raw = str(text).strip().replace(" ", "")
+    if "," in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    match = re.search(r"-?\d+(?:\.\d+)?", raw)
+    return float(match.group(0)) if match else None
+
+
+def _first_date(text: Any) -> str | None:
+    match = DATE_RE.search(str(text or ""))
+    return match.group(0) if match else None
+
+
+def parse_dashboard(payload: Any) -> dict[str, Any]:
+    """Iz SDUI taba izvuci stanje, jedinice i tarifu (accountInfoCard i dr.)."""
+    tab = payload.get("tab", payload) if isinstance(payload, dict) else {}
+    info: dict[str, Any] = {}
+    for comp in (tab or {}).get("components") or []:
+        ctype = comp.get("componentType")
+        if ctype in ("accountInfoCard", "highlightedAmountCard"):
+            price = (comp.get("price") or {}).get("primaryPrice") or {}
+            amount = _to_number(price.get("amount"))
+            if amount is not None:
+                info["balance"] = amount
+                info["currency"] = "EUR" if price.get("unit") in ("€", "EUR") else price.get("unit")
+            info["account_valid_until"] = _first_date((comp.get("body") or {}).get("text"))
+        elif ctype in ("unlimitedUnitItem", "unitItem"):
+            description = comp.get("description") or {}
+            value = (description.get("value") or {}).get("text")
+            if value is not None:
+                info["units"] = {
+                    "value": _to_number(value),
+                    "label": (description.get("total") or {}).get("text"),
+                    "valid_until": _first_date((comp.get("caption") or {}).get("text")),
+                }
+        elif ctype == "animatedInfoCard":
+            info["tariff"] = (comp.get("title") or {}).get("text")
+            info["tariff_valid_until"] = _first_date((comp.get("body") or {}).get("text"))
+
+    if "balance" not in info:
+        fallback = parse_balance(payload)
+        if fallback:
+            info.update(balance=fallback["amount"], currency=fallback["currency"])
+    return info

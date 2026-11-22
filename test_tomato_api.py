@@ -60,6 +60,43 @@ class TestSdui(unittest.TestCase):
         self.assertEqual(tomato.tab_url(shell), "dashboard/tab/myDashboard?apiVersion=v4.6")
         self.assertIsNone(tomato.tab_url({"background": {"url": "https://x/y.png"}}))
 
+    real_tab = {
+        "shell": {"title": {"text": "098 000 000"}},
+        "tab": {
+            "components": [
+                {
+                    "componentType": "accountInfoCard",
+                    "price": {"primaryPrice": {"amount": "10,82", "unit": "€", "style": "H1"}},
+                    "body": {"text": "Racun istice 16.02.2027."},
+                },
+                {
+                    "componentType": "animatedInfoCard",
+                    "title": {"text": "OPTI MALA"},
+                    "body": {"text": "Tarifa istjece 04.12.2026."},
+                },
+                {
+                    "componentType": "unlimitedUnitItem",
+                    "description": {"value": {"text": "7956"}, "total": {"text": "jedinica"}},
+                    "caption": {"text": "Traje do 04.12.2026."},
+                },
+            ]
+        },
+    }
+
+    def test_parse_dashboard_real_shape(self):
+        info = tomato.parse_dashboard(self.real_tab)
+        self.assertEqual(info["balance"], 10.82)
+        self.assertEqual(info["currency"], "EUR")
+        self.assertEqual(info["units"]["value"], 7956)
+        self.assertEqual(info["units"]["label"], "jedinica")
+        self.assertEqual(info["tariff"], "OPTI MALA")
+        self.assertEqual(info["tariff_valid_until"], "04.12.2026")
+        self.assertEqual(info["account_valid_until"], "16.02.2027")
+
+    def test_parse_dashboard_falls_back_to_generic_parser(self):
+        payload = {"tab": {"components": []}, "balance": {"amount": "3,50", "currency": "EUR"}}
+        self.assertEqual(tomato.parse_dashboard(payload)["balance"], 3.5)
+
 
 class TestNotify(unittest.TestCase):
     def test_dry_run_escapes_quotes(self):

@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import find_first, parse_balance
+from .api import parse_dashboard
 from .const import CONF_MSISDN, DOMAIN
 from .coordinator import TomatoCoordinator
 
@@ -46,13 +46,13 @@ class TomatoBalanceSensor(CoordinatorEntity[TomatoCoordinator], SensorEntity):
 
     @property
     def native_value(self) -> float | None:
-        balance = parse_balance(self.coordinator.data)
-        return balance["amount"] if balance else None
+        return parse_dashboard(self.coordinator.data).get("balance")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        units = find_first(self.coordinator.data, "units")
-        return {
-            "msisdn": self.coordinator.entry.data[CONF_MSISDN],
-            "units": units if isinstance(units, list) else [],
-        }
+        info = parse_dashboard(self.coordinator.data)
+        attrs: dict[str, Any] = {"msisdn": self.coordinator.entry.data[CONF_MSISDN]}
+        for key in ("currency", "units", "tariff", "tariff_valid_until", "account_valid_until"):
+            if info.get(key) is not None:
+                attrs[key] = info[key]
+        return attrs

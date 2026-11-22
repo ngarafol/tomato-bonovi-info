@@ -260,43 +260,49 @@ def cmd_status(args: argparse.Namespace) -> None:
     if args.json:
         print(json.dumps(dashboard, ensure_ascii=False, indent=2))
         return
-    balance = parse_balance(dashboard)
-    if balance is None:
+    info = parse_dashboard(dashboard)
+    if "balance" not in info:
         print("Ne mogu prepoznati stanje; pokreni s --json za sirovi SDUI.")
         return
-    print(f"Stanje: {balance['amount']:.2f} {balance['currency']}")
-    units = find_first(dashboard, "units")
+    print(f"Stanje: {info['balance']:.2f} {info.get('currency') or 'EUR'}")
+    units = info.get("units")
     if units:
-        print(json.dumps(units, ensure_ascii=False, indent=2))
+        expiry = f" (do {units['valid_until']})" if units.get("valid_until") else ""
+        print(f"Jedinice: {units['value']:g} {units.get('label') or ''}{expiry}")
+    if info.get("tariff"):
+        expiry = f" (do {info['tariff_valid_until']})" if info.get("tariff_valid_until") else ""
+        print(f"Tarifa: {info['tariff']}{expiry}")
+    if info.get("account_valid_until"):
+        print(f"Racun istjece: {info['account_valid_until']}")
 
 
 def cmd_balance(_: argparse.Namespace) -> None:
     """Strojno citljiv izlaz za Home Assistant / skripte."""
-    balance = parse_balance(fetch_dashboard())
-    if balance is None:
+    info = parse_dashboard(fetch_dashboard())
+    if "balance" not in info:
         sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json.")
-    print(json.dumps(balance, ensure_ascii=False))
+    print(json.dumps({"amount": info["balance"], "currency": info.get("currency") or "EUR"}, ensure_ascii=False))
 
 
 def cmd_watch(args: argparse.Namespace) -> None:
     while True:
         dashboard = fetch_dashboard()
-        balance = parse_balance(dashboard)
-        if balance is None:
+        info = parse_dashboard(dashboard)
+        if "balance" not in info:
             sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json i javi mi strukturu.")
 
         state = load_state()
-        below = balance["amount"] < args.below
+        below = info["balance"] < args.below
         send = below and not state.get("alerted", False)
         state["alerted"] = below
         save_state(state)
         stamp = time.strftime("%Y-%m-%d %H:%M")
-        print(f"{stamp}  {balance['amount']:.2f} {balance['currency']}  (prag {args.below:g})")
+        print(f"{stamp}  {info['balance']:.2f} {info.get('currency') or 'EUR'}  (prag {args.below:g})")
 
         if send:
             notify(
                 "Tomato: nisko stanje",
-                f"{balance['amount']:.2f} {balance['currency']} (prag {args.below:g})",
+                f"{info['balance']:.2f} {info.get('currency') or 'EUR'} (prag {args.below:g})",
                 dry_run=args.dry_run,
             )
         if not args.every:
@@ -348,6 +354,55 @@ def main() -> None:
         args.func(args)
     except ApiError as exc:
         sys.exit(str(exc))
+
+
+DATE_RE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}")
+
+
+def _to_number(text) -> float | None:
+    raw = str(text).strip().replace(" ", "")
+    if "," in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    match = re.search(r"-?\d+(?:\.\d+)?", raw)
+    return float(match.group(0)) if match else None
+
+
+def _first_date(text) -> str | None:
+    match = DATE_RE.search(str(text or ""))
+    return match.group(0) if match else None
+
+
+def parse_dashboard(payload) -> dict:
+    """Iz SDUI taba izvuci stanje, jedinice i tarifu."""
+    tab = payload.get("tab", payload) if isinstance(payload, dict) else {}
+    info: dict = {}
+    for comp in (tab or {}).get("components") or []:
+        ctype = comp.get("componentType")
+        if ctype in ("accountInfoCard", "highlightedAmountCard"):
+            price = (comp.get("price") or {}).get("primaryPrice") or {}
+            amount = _to_number(price.get("amount"))
+            if amount is not None:
+                info["balance"] = amount
+                info["currency"] = "EUR" if price.get("unit") in ("\u20ac", "EUR") else price.get("unit")
+            info["account_valid_until"] = _first_date((comp.get("body") or {}).get("text"))
+        elif ctype in ("unlimitedUnitItem", "unitItem"):
+            description = comp.get("description") or {}
+            value = (description.get("value") or {}).get("text")
+            if value is not None:
+                info["units"] = {
+                    "value": _to_number(value),
+                    "label": (description.get("total") or {}).get("text"),
+                    "valid_until": _first_date((comp.get("caption") or {}).get("text")),
+                }
+        elif ctype == "animatedInfoCard":
+            info["tariff"] = (comp.get("title") or {}).get("text")
+            info["tariff_valid_until"] = _first_date((comp.get("body") or {}).get("text"))
+    if "balance" not in info:
+        fallback = parse_balance(payload)
+        if fallback:
+            info.update(balance=fallback["amount"], currency=fallback["currency"])
+    return info
+
 
 
 if __name__ == "__main__":
