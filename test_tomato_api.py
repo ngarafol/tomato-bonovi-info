@@ -1,10 +1,9 @@
-import importlib.util
+import contextlib
+import io
+import sys
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location("tomato_api", Path(__file__).with_name("tomato_api.py"))
-tomato = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(tomato)
+import tomato_api as tomato
 
 
 class TestNormalize(unittest.TestCase):
@@ -27,12 +26,7 @@ class TestSdui(unittest.TestCase):
 
     def test_find_first_goes_through_lists(self):
         self.assertEqual(tomato.find_first(self.dashboard, "currency"), "EUR")
-
-    def test_collect_flattens_with_paths(self):
-        lines = []
-        tomato.collect(self.dashboard, {"amount", "currency", "name"}, lines)
-        self.assertIn("content[0].price.amount = 7.42", lines)
-        self.assertIn("content[1].units[0].name = MIN", lines)
+        self.assertIsNone(tomato.find_first(self.dashboard, "nema-me"))
 
     def test_tokens_from_wrapped_response(self):
         response = {"state": "success", "data": {"tokens": {"access": "a", "refresh": "r", "isLoginMfa": False}}}
@@ -48,21 +42,14 @@ class TestSdui(unittest.TestCase):
         self.assertEqual(tomato.parse_balance({"price": {"amount": "7,42", "currency": "EUR"}})["amount"], 7.42)
 
 
-class TestWatch(unittest.TestCase):
-    def test_notify_only_on_transition(self):
-        self.assertEqual(tomato.should_notify(1.0, 3.0, False), (True, True))
-        self.assertEqual(tomato.should_notify(1.0, 3.0, True), (False, True))
-        self.assertEqual(tomato.should_notify(5.0, 3.0, True), (False, False))
-
-    def test_notify_uses_osascript_on_macos(self):
-        import contextlib, io, sys
-
+class TestNotify(unittest.TestCase):
+    def test_dry_run_escapes_quotes(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             tomato.notify('Tomato "test"', "1.00 EUR", dry_run=True)
+        self.assertNotIn('"test"', out.getvalue())
         if sys.platform == "darwin":
             self.assertIn("osascript", out.getvalue())
-        self.assertNotIn('"test"', out.getvalue())
 
 
 if __name__ == "__main__":

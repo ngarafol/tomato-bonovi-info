@@ -69,7 +69,7 @@ def cmd_check(args: argparse.Namespace) -> None:
     print(json.dumps(call("POST", "/validate/phone-number", {"msisdn": e164(args.msisdn)}), ensure_ascii=False))
 
 
-def pick_voucher(msisdn: str, amount: float) -> tuple[str, float | None]:
+def pick_voucher(amount: float) -> tuple[str, float | None]:
     data = call("GET", "/vouchers")
     for v in data["voucherList"]:
         if not v.get("custom") and float(v["price"]) == amount:
@@ -82,16 +82,13 @@ def pick_voucher(msisdn: str, amount: float) -> tuple[str, float | None]:
 
 def cmd_buy(args: argparse.Namespace) -> None:
     msisdn = e164(args.msisdn)
-    sap_mm, free_entry = pick_voucher(msisdn, args.amount)
+    sap_mm, free_entry = pick_voucher(args.amount)
     body = {
         "sapMm": sap_mm,
         "customerData": {"phoneNumber": "+" + msisdn, "email": args.email},
     }
     if free_entry is not None:
         body["freeEntryValue"] = free_entry
-    if args.company:
-        name, oib, address, postal, city = args.company
-        body["companyData"] = {"name": name, "oib": oib, "address": address, "postalCode": postal, "city": city}
 
     order = call("POST", "/purchase-voucher", body)
     link, params = order["redirectLink"], order.get("paymentGatewayParameters") or {}
@@ -125,7 +122,6 @@ def main() -> None:
     buy.add_argument("--msisdn", required=True, help="broj koji se nadoplacuje")
     buy.add_argument("--amount", type=float, required=True, help="iznos u EUR")
     buy.add_argument("--email", default="", help="e-mail za potvrdu")
-    buy.add_argument("--company", nargs=5, metavar=("NAZIV", "OIB", "ADRESA", "POSTANSKI", "GRAD"))
     buy.add_argument("--open", action="store_true", help="odmah otvori placanje u pregledniku")
     buy.set_defaults(func=cmd_buy)
 

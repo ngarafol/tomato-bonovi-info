@@ -30,7 +30,7 @@ import urllib.request
 from pathlib import Path
 
 BASE = os.environ.get("TOMATO_API_BASE", "https://webauth.tomato.com.hr/mcrmtomato_oauth/api").rstrip("/")
-API_VERSION = os.environ.get("TOMATO_API_VERSION", "v4.6")
+API_VERSION = "v4.6"
 STATE_PATH = Path(os.environ.get("TOMATO_STATE", "~/.config/tomato/state.json")).expanduser()
 UA = (
     "MojTomato/3.0.1 (co.infinum.mojtomato; build:3010000; type:release; "
@@ -42,7 +42,6 @@ class ApiError(RuntimeError):
     def __init__(self, status: int, body: str):
         super().__init__(f"HTTP {status}: {body[:400]}")
         self.status = status
-        self.body = body
 
 
 def e164(raw: str) -> str:
@@ -70,8 +69,6 @@ def request(method: str, path: str, payload: dict | None = None, token: str | No
         headers["Content-Type"] = "application/json"
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    if os.environ.get("TOMATO_FIREBASE_TOKEN"):
-        headers["Firebase-Token"] = os.environ["TOMATO_FIREBASE_TOKEN"]
     req = urllib.request.Request(url_for(path), method=method, data=data, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -84,37 +81,6 @@ def request(method: str, path: str, payload: dict | None = None, token: str | No
         raise ApiError(200, f"nije JSON: {body[:200]}") from None
 
 
-def find_first(node, key: str):
-    """Prva vrijednost `key` bilo gdje u (SDUI) odgovoru."""
-    if isinstance(node, dict):
-        if key in node:
-            return node[key]
-        for value in node.values():
-            found = find_first(value, key)
-            if found is not None:
-                return found
-    elif isinstance(node, list):
-        for item in node:
-            found = find_first(item, key)
-            if found is not None:
-                return found
-    return None
-
-
-def collect(node, keys: set[str], out: list[str], prefix: str = "") -> None:
-    """Popis svih `keys` polja s putanjom -- dovoljno za SDUI bez poznate sheme."""
-    if isinstance(node, dict):
-        for name, value in node.items():
-            path = f"{prefix}.{name}" if prefix else name
-            if isinstance(value, (dict, list)):
-                collect(value, keys, out, path)
-            elif name in keys:
-                out.append(f"{path} = {value}")
-    elif isinstance(node, list):
-        for i, item in enumerate(node):
-            collect(item, keys, out, f"{prefix}[{i}]")
-
-
 def walk_dicts(node):
     if isinstance(node, dict):
         yield node
@@ -123,6 +89,11 @@ def walk_dicts(node):
     elif isinstance(node, list):
         for item in node:
             yield from walk_dicts(item)
+
+
+def find_first(node, key: str):
+    """Prva vrijednost `key` bilo gdje u (SDUI) odgovoru."""
+    return next((d[key] for d in walk_dicts(node) if key in d), None)
 
 
 def parse_balance(dashboard: dict) -> dict | None:
@@ -135,12 +106,6 @@ def parse_balance(dashboard: dict) -> dict | None:
                 continue
             return {"amount": amount, "currency": node["currency"]}
     return None
-
-
-def should_notify(amount: float, threshold: float, already_alerted: bool) -> tuple[bool, bool]:
-    """(posalji obavijest, novo stanje alarma) -- alarm se resetira kad stanje naraste."""
-    below = amount < threshold
-    return below and not already_alerted, below
 
 
 def notify(title: str, message: str, dry_run: bool = False) -> None:
@@ -252,32 +217,19 @@ def cmd_login(args: argparse.Namespace) -> None:
     print(f"Prijava OK za {tokens['msisdn']}. Tokeni u {STATE_PATH} (0600).")
 
 
-def cmd_refresh(_: argparse.Namespace) -> None:
-    state = refresh_token(load_state())
-    print(f"Access token osvjezen (msisdn {state.get('msisdn')}).")
-
-
 def cmd_status(args: argparse.Namespace) -> None:
     dashboard = with_token("GET", "dashboard")
     if args.json:
         print(json.dumps(dashboard, ensure_ascii=False, indent=2))
         return
     balance = parse_balance(dashboard)
-    if balance:
-        print(f"Stanje: {balance['amount']:.2f} {balance['currency']}")
-    lines: list[str] = []
-    collect(
-        dashboard,
-        {
-            "amount", "currency", "unit", "units", "name", "title", "label",
-            "remaining", "price", "value", "consumption", "validUntil", "date",
-        },
-        lines,
-    )
-    if not lines:
-        print("Odgovor nema prepoznatih polja; pokreni s --json za sirovi SDUI.")
-    else:
-        print("\n".join(dict.fromkeys(lines)))
+    if balance is None:
+        print("Ne mogu prepoznati stanje; pokreni s --json za sirovi SDUI.")
+        return
+    print(f"Stanje: {balance['amount']:.2f} {balance['currency']}")
+    units = find_first(dashboard, "units")
+    if units:
+        print(json.dumps(units, ensure_ascii=False, indent=2))
 
 
 def cmd_balance(_: argparse.Namespace) -> None:
@@ -296,9 +248,9 @@ def cmd_watch(args: argparse.Namespace) -> None:
             sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json i javi mi strukturu.")
 
         state = load_state()
-        send, below = should_notify(balance["amount"], args.below, state.get("alerted", False))
+        below = balance["amount"] < args.below
+        send = below and not state.get("alerted", False)
         state["alerted"] = below
-        state["lastBalance"] = balance
         save_state(state)
         stamp = time.strftime("%Y-%m-%d %H:%M")
         print(f"{stamp}  {balance['amount']:.2f} {balance['currency']}  (prag {args.below:g})")
@@ -335,8 +287,6 @@ def main() -> None:
     login.add_argument("--password", help="lozinka (inace se pita)")
     login.add_argument("--tan", help="TAN (ako ga vec imas; inace se pita)")
     login.set_defaults(func=cmd_login)
-
-    sub.add_parser("refresh", help="osvjezi access token").set_defaults(func=cmd_refresh)
 
     status = sub.add_parser("status", help="stanje racuna i preostalih jedinica")
     status.add_argument("--json", action="store_true", help="sirovi SDUI odgovor")
