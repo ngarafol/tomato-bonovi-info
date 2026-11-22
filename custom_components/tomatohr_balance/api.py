@@ -123,7 +123,7 @@ class TomatoApi:
             async with self.session.request(method, url, json=payload, headers=headers, timeout=30) as resp:
                 body = await resp.text()
                 if resp.status in (401, 403):
-                    raise TomatoAuthError(f"HTTP {resp.status}")
+                    raise TomatoAuthError(f"HTTP {resp.status}: {body[:300]}")
                 if resp.status >= 400:
                     raise TomatoApiError(f"HTTP {resp.status}: {body[:200]}")
         except ClientError as err:
