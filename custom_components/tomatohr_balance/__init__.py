@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .api import e164
+from .api import e164, find_first
 from .const import CONF_MSISDN, DOMAIN
 from .coordinator import TomatoCoordinator
 
@@ -39,7 +39,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             coordinator = None
         if coordinator is None:
             raise ServiceValidationError("Navedi msisdn (vise racuna)")
-        await coordinator.api.async_top_up(call.data["code"])
+        response = await coordinator.api.async_top_up(call.data["code"])
+        state = find_first(response, "state")
+        if isinstance(state, str) and state.lower() not in ("success", "ok"):
+            message = find_first(response, "message") or state
+            raise ServiceValidationError(f"Nadoplata nije uspjela: {message}")
         await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, "redeem", async_redeem, schema=REDEEM_SCHEMA)

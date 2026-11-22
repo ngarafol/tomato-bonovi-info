@@ -85,6 +85,26 @@ repou; držim je lokalno.
 Automatizacija API-ja gotovo sigurno krši uvjete korištenja — koristiti samo na
 vlastitom/obiteljskom broju i svjesno.
 
+### Nadoplata iz Home Assistant-a
+
+Akcija `tomatohr_balance.redeem` (`code` = 14-znamenkasti kod s bona, `msisdn` samo ako imas vise racuna).
+
+- *Alati za razvijatelje -> Akcije -> `tomatohr_balance.redeem`*
+- ili u skripti/automatizaciji:
+
+```yaml
+script:
+  tomato_nadoplati:
+    sequence:
+      - action: tomatohr_balance.redeem
+        data:
+          code: "12345678901234"
+```
+
+Nakon uspjesne nadoplate integracija odmah osvjezi stanje. Kod se kupuje izvan HA
+(webshop ili `topup.py` — kartica ne prolazi kroz HA). Ako server odbije kod,
+akcija vrati gresku s porukom umjesto tihog "uspjeha".
+
 ### tomato_api.py
 
 ```sh
