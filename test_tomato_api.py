@@ -49,6 +49,17 @@ class TestSdui(unittest.TestCase):
             tomato.parse_balance({"amount": "2,50 EUR", "currency": "EUR"})["amount"], 2.5
         )
 
+    def test_tab_url_ignores_background_and_actions(self):
+        shell = {
+            "background": {"type": "image", "url": "https://ssc.a1.hr/bg.png"},
+            "content": {"tabBar": {"tabs": [
+                {"label": {"text": "Tomato"}, "url": "dashboard/tab/myDashboard?apiVersion=v4.6"}
+            ]}},
+            "rightActions": [{"action": {"url": "settings/settingsScreen?apiVersion=v4.6"}}],
+        }
+        self.assertEqual(tomato.tab_url(shell), "dashboard/tab/myDashboard?apiVersion=v4.6")
+        self.assertIsNone(tomato.tab_url({"background": {"url": "https://x/y.png"}}))
+
 
 class TestNotify(unittest.TestCase):
     def test_dry_run_escapes_quotes(self):

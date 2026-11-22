@@ -62,6 +62,20 @@ def _parse_amount(value: Any) -> float | None:
     return None
 
 
+def tab_url(shell):
+    """URL taba iz SDUI ljuske (content.tabBar.tabs[].url), ne pozadina/akcije."""
+    tabs = ((shell or {}).get("content") or {}).get("tabBar", {}).get("tabs") or []
+    for tab in tabs:
+        url = tab.get("url")
+        if url and "dashboard/tab" in url:
+            return url
+    for node in walk_dicts(shell):
+        url = node.get("url")
+        if isinstance(url, str) and "/tab/" in url:
+            return url
+    return None
+
+
 def parse_balance(dashboard: Any) -> dict[str, Any] | None:
     """Prvi SDUI cvor s `currency` i iznosom = stanje racuna."""
     for node in walk_dicts(dashboard):
@@ -159,14 +173,20 @@ class TomatoApi:
         if self._on_tokens:
             self._on_tokens(self.access, self.refresh_token, self.is_login_mfa)
 
-    async def async_dashboard(self) -> Any:
+    async def _get(self, path: str) -> Any:
         if not self.access:
             await self.async_refresh()
         try:
-            return await self._request("GET", "dashboard", token=self.access)
+            return await self._request("GET", path, token=self.access)
         except TomatoAuthError:
             await self.async_refresh()
-            return await self._request("GET", "dashboard", token=self.access)
+            return await self._request("GET", path, token=self.access)
+
+    async def async_dashboard(self) -> dict[str, Any]:
+        """Ljuska + sadrzaj odabranog taba (stanje je u tabu, ne u ljusci)."""
+        shell = await self._get("dashboard")
+        url = tab_url(shell)
+        return {"shell": shell, "tab": await self._get(url) if url else shell}
 
     async def async_top_up(self, code: str) -> Any:
         return await self._request(

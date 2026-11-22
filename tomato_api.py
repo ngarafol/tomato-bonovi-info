@@ -112,6 +112,20 @@ def _parse_amount(value) -> float | None:
     return None
 
 
+def tab_url(shell):
+    """URL taba iz SDUI ljuske (content.tabBar.tabs[].url), ne pozadina/akcije."""
+    tabs = ((shell or {}).get("content") or {}).get("tabBar", {}).get("tabs") or []
+    for tab in tabs:
+        url = tab.get("url")
+        if url and "dashboard/tab" in url:
+            return url
+    for node in walk_dicts(shell):
+        url = node.get("url")
+        if isinstance(url, str) and "/tab/" in url:
+            return url
+    return None
+
+
 def parse_balance(dashboard: dict) -> dict | None:
     """Prvi SDUI cvor s `currency` i iznosom = stanje racuna."""
     for node in walk_dicts(dashboard):
@@ -235,8 +249,14 @@ def cmd_login(args: argparse.Namespace) -> None:
     print(f"Prijava OK za {tokens['msisdn']}. Tokeni u {STATE_PATH} (0600).")
 
 
+def fetch_dashboard() -> dict:
+    shell = with_token("GET", "dashboard")
+    url = tab_url(shell)
+    return {"shell": shell, "tab": with_token("GET", url) if url else shell}
+
+
 def cmd_status(args: argparse.Namespace) -> None:
-    dashboard = with_token("GET", "dashboard")
+    dashboard = fetch_dashboard()
     if args.json:
         print(json.dumps(dashboard, ensure_ascii=False, indent=2))
         return
@@ -252,7 +272,7 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 def cmd_balance(_: argparse.Namespace) -> None:
     """Strojno citljiv izlaz za Home Assistant / skripte."""
-    balance = parse_balance(with_token("GET", "dashboard"))
+    balance = parse_balance(fetch_dashboard())
     if balance is None:
         sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json.")
     print(json.dumps(balance, ensure_ascii=False))
@@ -260,7 +280,7 @@ def cmd_balance(_: argparse.Namespace) -> None:
 
 def cmd_watch(args: argparse.Namespace) -> None:
     while True:
-        dashboard = with_token("GET", "dashboard")
+        dashboard = fetch_dashboard()
         balance = parse_balance(dashboard)
         if balance is None:
             sys.exit("Ne mogu prepoznati stanje u dashboardu; pokreni status --json i javi mi strukturu.")
