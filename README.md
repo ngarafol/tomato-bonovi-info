@@ -10,10 +10,10 @@ Provjera stanja Tomato **bonova** (prepaid) bez mobilne aplikacije.
 2. Preuzmi **Tomato** i restartaj Home Assistant.
 3. *Postavke -> Uredaji i usluge -> Dodaj integraciju -> Tomato*, upisi broj; na mobitel s karticom dolazi SMS s TAN-om.
 4. Senzor `sensor.tomato_<broj>` (EUR, `monetary`) s atributima `units` i `msisdn`; osvjezava se svakih 30 min.
-5. Akcija `tomato_balance.redeem` (`code` = kod bona) nadoplacuje racun.
+5. Akcija `tomatohr_balance.redeem` (`code` = kod bona) nadoplacuje racun.
 
-Domain je `tomato_balance` jer HA vec ima ugradenu integraciju `tomato` (Tomato router firmware).
-Integracija zivi u `custom_components/tomato_balance/`; skripte (`tomato_api.py`, `topup.py`) su neovisne i ostaju za CLI/cron.
+Domain je `tomatohr_balance` jer HA vec ima ugradenu integraciju `tomato` (Tomato router firmware).
+Integracija zivi u `custom_components/tomatohr_balance/`; skripte (`tomato_api.py`, `topup.py`) su neovisne i ostaju za CLI/cron.
 
 ## Zašto
 

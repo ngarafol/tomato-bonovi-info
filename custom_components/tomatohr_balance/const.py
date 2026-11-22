@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-DOMAIN = "tomato_balance"
+DOMAIN = "tomatohr_balance"
 API_BASE = "https://webauth.tomato.com.hr/mcrmtomato_oauth/api"
 API_VERSION = "v4.6"
 USER_AGENT = (
