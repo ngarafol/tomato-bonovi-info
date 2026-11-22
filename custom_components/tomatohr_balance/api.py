@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import date
 from typing import Any
@@ -109,6 +110,7 @@ class TomatoApi:
         self.refresh_token = refresh
         self.is_login_mfa = is_login_mfa
         self._on_tokens = on_tokens
+        self._refresh_lock = asyncio.Lock()
 
     async def _request(
         self, method: str, path: str, payload: dict | None = None, token: str | None = None
@@ -174,14 +176,25 @@ class TomatoApi:
         if self._on_tokens:
             self._on_tokens(self.access, self.refresh_token, self.is_login_mfa)
 
-    async def _get(self, path: str) -> Any:
+    async def _refresh_shared(self, used_access: str | None) -> None:
+        """Osvjezi token samo ako ga druga zadaca vec nije osvjezila (rotirajuci refresh tokeni)."""
+        async with self._refresh_lock:
+            if used_access is not None and self.access != used_access:
+                return
+            await self.async_refresh()
+
+    async def _authed(self, method: str, path: str, payload: dict | None = None) -> Any:
         if not self.access:
-            await self.async_refresh()
+            await self._refresh_shared(None)
+        used = self.access
         try:
-            return await self._request("GET", path, token=self.access)
+            return await self._request(method, path, payload, token=used)
         except TomatoAuthError:
-            await self.async_refresh()
-            return await self._request("GET", path, token=self.access)
+            await self._refresh_shared(used)
+            return await self._request(method, path, payload, token=self.access)
+
+    async def _get(self, path: str) -> Any:
+        return await self._authed("GET", path)
 
     async def async_dashboard(self) -> dict[str, Any]:
         """Ljuska + sadrzaj odabranog taba (stanje je u tabu, ne u ljusci)."""
@@ -190,7 +203,7 @@ class TomatoApi:
         return {"shell": shell, "tab": await self._get(url) if url else shell}
 
     async def async_top_up(self, code: str) -> Any:
-        return await self._request(
+        return await self._authed(
             "POST",
             "shop/topUpRenewal",
             {
@@ -198,7 +211,6 @@ class TomatoApi:
                 "phoneNumber": self.msisdn,
                 "inputMethod": "manual",
             },
-            token=self.access,
         )
 
 
