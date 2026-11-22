@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 from aiohttp import ClientError, ClientSession
@@ -249,3 +250,11 @@ def parse_dashboard(payload: Any) -> dict[str, Any]:
         if fallback:
             info.update(balance=fallback["amount"], currency=fallback["currency"])
     return info
+
+def to_date(text) -> "date | None":
+    """'04.12.2026' -> date(2026, 12, 4); neispravno -> None."""
+    try:
+        day, month, year = str(text).split(".")
+        return date(int(year), int(month), int(day))
+    except (AttributeError, TypeError, ValueError):
+        return None

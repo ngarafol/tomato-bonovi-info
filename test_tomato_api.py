@@ -2,6 +2,7 @@ import contextlib
 import io
 import sys
 import unittest
+from datetime import date
 
 import tomato_api as tomato
 
@@ -96,6 +97,11 @@ class TestSdui(unittest.TestCase):
     def test_parse_dashboard_falls_back_to_generic_parser(self):
         payload = {"tab": {"components": []}, "balance": {"amount": "3,50", "currency": "EUR"}}
         self.assertEqual(tomato.parse_dashboard(payload)["balance"], 3.5)
+
+    def test_to_date(self):
+        self.assertEqual(tomato.to_date("04.12.2026"), date(2026, 12, 4))
+        self.assertIsNone(tomato.to_date(None))
+        self.assertIsNone(tomato.to_date("nema datuma"))
 
 
 class TestNotify(unittest.TestCase):

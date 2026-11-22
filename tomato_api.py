@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import date
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -403,6 +404,15 @@ def parse_dashboard(payload) -> dict:
             info.update(balance=fallback["amount"], currency=fallback["currency"])
     return info
 
+
+
+def to_date(text) -> "date | None":
+    """'04.12.2026' -> date(2026, 12, 4); neispravno -> None."""
+    try:
+        day, month, year = str(text).split(".")
+        return date(int(year), int(month), int(day))
+    except (AttributeError, TypeError, ValueError):
+        return None
 
 
 if __name__ == "__main__":
