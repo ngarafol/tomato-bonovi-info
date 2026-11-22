@@ -53,25 +53,21 @@ gateway, potpisan `hash`-em) — kartica se upisuje u pregledniku. Broj u
 - Prijava ide "preko Tomato mobilne mreže" (bez koda), uz 2FA, korisničkim imenom/lozinkom ili biometrijom.
 - Promet kroz app preko Tomato mreže se ne naplaćuje.
 
-Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
+Aplikacija koristi Google SMS Retriever pa TAN koji stigne SMS-om upiše sama — zato
+kod nikad ne vidiš. WiFi tu ne smeta; mobilna mreža treba samo za carrier prijavu.
+Kad `tomato_api.py login` zatraži TAN, app na mobitelu ne sluša, pa poruka samo
+sleti na telefon: osoba koja ga ima pročita 6 znamenki (`--tan 123456`).
 
-- API base je **hardkodiran**: `https://webauth.tomato.com.hr/mcrmtomato_oauth/api/`
-  (`BaseUrl.OAUTH`), svaki zahtjev dobiva `?apiVersion=v4.6`.
-- Stanje računa/jedinica: `GET dashboard` (SDUI: `AccountInfoCardResponse.price`,
-  `UnitsStatusResponse.units[]`, `ConsumptionCardResponse`).
-- Nadoplata bonom: `POST shop/topUpRenewal` s `{token, phoneNumber, inputMethod}`.
-- Prijava: `token/msisdnLogin` → SMS TAN (`token/msisdnTanLogin`), ili
-  `token/mfaLogin` (korisnik/lozinka) → TAN, ili carrier auto-login
-  (`oauth2/authz_autologin`, MSISDN se određuje po mreži s koje zahtjev dolazi).
-- **`token/refresh` traži samo `refreshToken`** (nema SIM-a, nema SMS-a), a
-  `token/biometric` dokazuje isto. Nema certificate pinninga, nema root/tamper
-  detekcije, tokeni u SharedPreferences su samo XOR-obfuscirani imenom paketa.
-- **Zaključak:** headless (server-side) stanje i nadoplata su izvedivi *nakon
-  jednog interaktivnog bootstrapa* — prvi TAN dolazi SMS-om na mobitel s karticom,
-  pa ga ta osoba mora jednom proslijediti. Carrier login s udaljenog servera ne
-  prolazi jer MSISDN čita mreža.
-- Automatizacija API-ja gotovo sigurno krši uvjete korištenja — koristiti samo na
-  vlastitom/obiteljskom broju i svjesno.
+TAN ide isključivo na broj naveden u zahtjevu i tokeni se vežu na taj broj;
+lažiranje MSISDN-a nije opcija — to je upravo provjera koju carrier prijava traži.
+Ako si vlasnik broja, a SIM je kod nekoga drugog, legalan put je zamjena/duplikat
+SIM-a ili eSIM uz provjeru identiteta kod operatera (0800 092 092).
+
+Ručna analiza aplikacije (mapa endpointa, auth tok, nalazi) namjerno nije u javnom
+repou; držim je lokalno.
+
+Automatizacija API-ja gotovo sigurno krši uvjete korištenja — koristiti samo na
+vlastitom/obiteljskom broju i svjesno.
 
 ### tomato_api.py
 
@@ -88,9 +84,8 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
 - Ako `login --msisdn` vrati `invalidCredentials` ("Ovaj broj nije povezan s
   nijednim računom") — broj nema Moj Tomato račun; tada ili registracija, ili
   `login --username <ime> --password` ako račun postoji.
-- `status` ne parsira SDUI shemu kruto: izvlači poznata polja s punom putanjom
-  (`content[0].price.amount = …`). Ako se shema promijeni, `--json` pokaže sirovi
-  odgovor.
+- `status` ispiše stanje i jedinice; `--json` daje sirovi odgovor ako se shema
+  promijeni.
 - Provjere: `python3 -m unittest test_tomato_api`.
 - TAN možeš upisati interaktivno ili ga proslijediti kroz stdin, što je praktično
   kad ti ga netko izdiktira preko telefona:
@@ -106,38 +101,6 @@ Statička analiza APK-a `co.infinum.mojtomato` 3.0.1 (Kotlin + ugrađeni Flutter
   (uz `TOMATO_STATE` u okolini ako state nije na defaultnoj putanji).
 - `./tomato_api.py balance` ispiše `{"amount": 2.5, "currency": "EUR"}` — za Home
   Assistant i skripte. HA upute (senzor + automacija): [docs/home-assistant.md](docs/home-assistant.md).
-
-### Zašto u aplikaciji nikad ne vidiš TAN
-
-Aplikacija koristi **Google SMS Retriever API** (`SmsRetriever.startSmsRetriever()`
-+ `GoogleSmsReceiver` u `ui/otp/sms/`): TAN stigne kao **običan SMS**, a app ga
-sama upiše — `OtpViewModel.k0(smsText)` vadi `\b\d{6}\b` i popuni polje. Dakle
-ništa se ne presreće na mreži i ništa ne treba tipkati; zato "nikad nisi vidio
-kod". WiFi pritom ne smeta — mobilna mreža treba **samo** za carrier auto-login
-(`oauth2/authz_autologin`, MSISDN se određuje po mreži s koje zahtjev dolazi).
-
-Kad `tomato_api.py login` pošalje zahtjev, app na mobitelu **ne** sluša, pa SMS
-samo sleti na telefon: osoba koja ga ima pročita 6 znamenki i javi ih tebi
-(`--tan 123456`), ili ih upišeš na prompt. Ako TAN SMS nije u inboxu (flash /
-class-0 poruka se ne pohranjuje), mora se pročitati u trenutku dok skripta čeka.
-
-TAN ide **isključivo na broj naveden u zahtjevu** (server ga šalje na taj MSISDN,
-a tokeni se vežu na taj isti broj): nema načina da ga pošalješ na drugi broj, a
-lažiranje izvornog MSISDN-a (mreža/header) je upravo sigurnosna provjera koju
-carrier prijava traži. Ako si vlasnik broja, a SIM je kod nekoga drugog, legalan
-put je zamjena/duplikat SIM-a ili eSIM uz provjeru identiteta kod operatera
-(0800 092 092) — ne zaobilaženje OTP-a.
-
-### Alternativa bez TAN-a (traži root)
-
-Ako je mobitel rootan, refresh token se može izvaditi iz
-`/data/data/co.infinum.mojtomato/shared_prefs/MOJ_VIP_PREFERENCES_SECURE.xml`:
-ključevi su `SHA1("<ime>_<0..3>")` (vrijednost razrezana na 4 dijela), a vrijednost
-je `hex(XOR(UTF-8 vrijednost, ključ))` gdje je ključ **ime paketa**
-`co.infinum.mojtomato` (vidi `SecurePreferencesManager`/`CryptoUtils`). Ime je
-`KEY_PRIMARY_REFRESH_TOKEN`. Tada u `~/.config/tomato/state.json` upišeš
-`{"refresh": "...", "isLoginMfa": false, "msisdn": "385..."}` i `status`/`redeem`
-rade bez TAN-a.
 
 ## Izvori
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Moj Tomato API klijent: bootstrap prijave (SMS TAN), stanje racuna i nadoplata bonom.
 
-Endpointi i tokovi su rekonstruirani statickom analizom APK-a
+Endpointi su rekonstruirani iz APK-a `co.infinum.mojtomato` 3.0.1.
 
 Prvi token se ne moze dobiti bez SIM-a/mobitela: prijava `token/msisdnLogin`
 salje SMS TAN na broj. Nakon tog jednog koraka sve dalje radi s bilo koje mreze
